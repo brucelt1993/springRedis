@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.luo.Redis.dao.UserDao">
+	<resultMap type="User" id="resultListUser">
+		<result column="userName" property="userName" />
+		<result column="userAge" property="userAge" />
+		<result column="userAddress" property="userAddress" />
+	</resultMap>
+	<!-- User 联合文章进行查询 方法之一的配置 (多对一的方式)  -->
+	<resultMap type="Article" id="resultUserArticleList">
+		<result column="aid" property="id" />
+		<result property="title" column="title" />
+		<result property="content" column="content" />
+		<association property="user" javaType="User" resultMap="resultListUser"/>
+	</resultMap>
+	<!-- 查询所有人物信息 -->
+	<select id="selectAllUsers" resultMap="resultListUser">
+		select * from user
+	</select>
+	<!-- 根据id查询User -->
+	<select id="selectUserByID" parameterType="int" resultType="User">
+		select * from user where id = #{id}
+	</select>
+	<!-- 根据部分名字信息查找User -->
+	<select id="selectUsers" parameterType="string" resultMap="resultListUser">
+		select * from user where userName like #{userName}
+	</select>
+	<!-- 添加人物信息 -->
+	<insert id="addUser" parameterType="User" useGeneratedKeys="true"
+		keyProperty="id">
+		insert into user(userName,userAge,userAddress)
+		values(#{userName},#{userAge},#{userAddress})
+	</insert>
+	<!-- 更新人物信息 -->
+	<update id="updateUser" parameterType="User">
+		update user set
+		userName=#{userName},userAge=#{userAge},userAddress=#{userAddress}
+		where id=#{id}
+	</update>
+	<!-- 删除人物信息 -->
+	<delete id="deleteUser" parameterType="int">
+		delete from user where
+		id=#{id}
+	</delete>
+    <!-- 查询某个人发表的文章 -->
+	<select id="getUserArticles" parameterType="int" resultMap="resultUserArticleList">
+       select user.id,user.userName,user.userAddress,article.id aid,article.title,article.content from user,article 
+              where user.id=article.userid and user.id=#{id}
+    </select>
+</mapper>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:cache="http://www.springframework.org/schema/cache"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mybatis-spring="http://mybatis.org/schema/mybatis-spring"
+	xmlns:p="http://www.springframework.org/schema/p" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.2.xsd
+		http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache-4.2.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.2.xsd
+		http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring-1.2.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.2.xsd">
+
+	<!-- 启用注解 -->
+	<context:annotation-config />
+
+	<!-- 指定spring注解注入层 -->
+	<context:component-scan base-package="com.luo.Redis.dao" />
+	<context:component-scan base-package="com.luo.Redis.service" />
+	<context:component-scan base-package="com.luo.Redis.util" />
+	<!-- 启用缓存注解 -->
+	<cache:annotation-driven />
+    <!-- 在这里加载多个配置文件无法获取,不知道什么原因 -->
+	<!-- mybatis start -->
+	<!-- 采用dbcp连接池来配置数据库 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="url"
+			value="jdbc:mysql://localhost:3306/bruce?characterEncoding=utf-8" />
+		<property name="username" value="root" />
+		<property name="password" value="xianhua" />
+		<property name="maxActive" value="10" />
+		<property name="maxIdle" value="10" />
+	</bean>
+	<!-- 配置数据库查询工厂sqlSessionFactory -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!-- dataSource属性指定要用到的连接池 -->
+		<property name="dataSource" ref="dataSource" />
+		<!-- configLocation属性指定mybatis的核心配置文件 -->
+		<property name="configLocation" value="classpath:Configuration.xml" />
+		<!-- mapper文件加载 -->
+		<property name="mapperLocations" value="classpath:com/luo/Redis/mapper/*.xml" />
+	</bean>
+	<!-- 配置映射接口 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="sqlSessionFactory" ref="sqlSessionFactory" />
+		<property name="basePackage" value="com.luo.Redis.dao" />
+	</bean>
+	<!-- transactionManager配置 -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	<!-- mybatis end -->
+
+	<!-- redis start -->
+	<!-- jedis 配置 -->
+	<bean id="poolConfig" class="redis.clients.jedis.JedisPoolConfig">
+		<property name="maxTotal" value="300" />
+		<property name="maxWaitMillis" value="1000" />
+		<property name="maxIdle" value="100" />
+		<property name="testOnBorrow" value="true" />
+	</bean>
+	<!-- redis服务器中心 -->
+	<bean id="jedisConnectionFactory"
+		class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory"
+		p:hostName="127.0.0.1" p:port="6379" p:password="123456"
+		p:poolConfig-ref="poolConfig" />
+
+	<bean id="redisTemplate" class="org.springframework.data.redis.core.RedisTemplate">
+		<property name="connectionFactory" ref="jedisConnectionFactory" />
+		<!-- 如果不配置Serializer，那么存储的时候智能使用String，如果用User类型存储，那么会提示错误User can't cast 
+			to String！！！ -->
+		<property name="keySerializer">
+			<bean
+				class="org.springframework.data.redis.serializer.StringRedisSerializer" />
+		</property>
+		<property name="valueSerializer">
+			<bean
+				class="org.springframework.data.redis.serializer.JdkSerializationRedisSerializer" />
+		</property>
+	</bean>
+	<!-- redis配置缓存 -->
+	<bean id="cacheManager" class="org.springframework.cache.support.SimpleCacheManager">
+		<property name="caches">
+			<set>
+				<bean class="com.luo.Redis.util.RedisUtil">
+					<property name="redisTemplate" ref="redisTemplate" />
+					<property name="name" value="User" />
+					<!-- User名称要在类或方法的注解中使用 -->
+				</bean>
+			</set>
+		</property>
+	</bean>
+</beans>
